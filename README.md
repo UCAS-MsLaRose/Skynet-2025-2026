@@ -24,6 +24,7 @@ ___
 + Dirk: Rules Expert/Secretary
 ### Programmers
 + Tate (Leader)
++Shree (captain)
 + Pryor
 + Dirk
 + Jonas
