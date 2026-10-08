@@ -1,210 +1,166 @@
-/*
-Copyright 2024 FIRST Tech Challenge Team 21881
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
-associated documentation files (the "Software"), to deal in the Software without restriction,
-including without limitation the rights to use, copy, modify, merge, publish, distribute,
-sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all copies or substantial
-portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
-NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
-DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-*/
+/* Copyright (c) 2021 FIRST. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted (subject to the limitations in the disclaimer below) provided that
+ * the following conditions are met:
+ *
+ * Redistributions of source code must retain the above copyright notice, this list
+ * of conditions and the following disclaimer.
+ *
+ * Redistributions in binary form must reproduce the above copyright notice, this
+ * list of conditions and the following disclaimer in the documentation and/or
+ * other materials provided with the distribution.
+ *
+ * Neither the name of FIRST nor the names of its contributors may be used to endorse or
+ * promote products derived from this software without specific prior written permission.
+ *
+ * NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE GRANTED BY THIS
+ * LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+ * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
 
 package org.firstinspires.ftc.teamcode.drive;
 
-import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
-import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
-import org.firstinspires.ftc.robotcore.external.navigation.Orientation;
-import com.qualcomm.robotcore.hardware.HardwareDevice;
-import com.qualcomm.robotcore.hardware.Servo;
-import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.eventloop.opmode.Disabled;
+import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
-import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.util.ElapsedTime;
 
-import com.qualcomm.robotcore.hardware.IMU;
-import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
-import org.firstinspires.ftc.robotcore.external.navigation.AngularVelocity;
-import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
-
-import java.lang.Math;
-
-/**
- * This file contains an minimal example of a Linear "OpMode". An OpMode is a 'program' that runs in either
- * the autonomous or the teleop period of an FTC match. The names of OpModes appear on the menu
- * of the FTC Driver Station. When an selection is made from the menu, the corresponding OpMode
- * class is instantiated on the Robot Controller and executed.
+/*
+ * This file contains an example of a Linear "OpMode".
+ * An OpMode is a 'program' that runs in either the autonomous or the teleop period of an FTC match.
+ * The names of OpModes appear on the menu of the FTC Driver Station.
+ * When a selection is made from the menu, the corresponding OpMode is executed.
  *
- * This particular OpMode just executes a basic Tank Drive Teleop for a PushBot
- * It includes all the skeletal structure that all linear OpModes contain.
+ * This particular OpMode illustrates driving a 4-motor Omni-Directional (or Holonomic) robot.
+ * This code will work with either a Mecanum-Drive or an X-Drive train.
+ * Both of these drives are illustrated at https://gm0.org/en/latest/docs/robot-design/drivetrains/holonomic.html
+ * Note that a Mecanum drive must display an X roller-pattern when viewed from above.
  *
- * Remove a @Disabled the on the next line or two (if present) to add this OpMode to the Driver Station OpMode list,
- * or add a @Disabled annotation to prevent this OpMode from being added to the Driver Station
+ * Also note that it is critical to set the correct rotation direction for each motor.  See details below.
+ *
+ * Holonomic drives provide the ability for the robot to move in three axes (directions) simultaneously.
+ * Each motion axis is controlled by one Joystick axis.
+ *
+ * 1) Axial:    Driving forward and backward               Left-joystick Forward/Backward
+ * 2) Lateral:  Strafing right and left                     Left-joystick Right and Left
+ * 3) Yaw:      Rotating Clockwise and counter clockwise    Right-joystick Right and Left
+ *
+ * This code is written assuming that the right-side motors need to be reversed for the robot to drive forward.
+ * When you first test your robot, if it moves backward when you push the left stick forward, then you must flip
+ * the direction of all 4 motors (see code below).
+ *
+ * Use Android Studio to Copy this Class, and Paste it into your team's code folder with a new name.
+ * Remove or comment out the @Disabled line to add this OpMode to the Driver Station OpMode list
  */
 
 @TeleOp
 public class TeleOpDrive extends LinearOpMode {
-    private DcMotor backLeft;
-    private DcMotor backRight;
-    private DcMotor frontLeft;
-    private DcMotor frontRight;
 
-    private DcMotor flywheel;
-    private DcMotor funnel;
-    private DcMotor cycler1;
-    private DcMotor cycler2;
-    
-    private IMU imu;
-
-    public void driveInDirection(double direction, double power, double right_stick) {
-        double x = power * Math.sin(direction);
-        double y = power * Math.cos(direction);
-        
-        double fl = y + x - right_stick;
-        double fr = y - x + right_stick;
-        double bl = y - x - right_stick;
-        double br = y + x + right_stick;
-
-        double max = Math.max(1.0,
-            Math.max(Math.abs(fl),
-            Math.max(Math.abs(fr),
-            Math.max(Math.abs(bl), Math.abs(br)))));
-
-        frontLeft.setPower(fl / max);
-        frontRight.setPower(fr / max);
-        backLeft.setPower(bl / max);
-        backRight.setPower(br / max);
-    }
-
-    public void cycleBall(double power) {
-        cycler1.setPower(power);
-        cycler2.setPower(power);
-    }
-    
-    public void spinFlywheel(double power) {
-        flywheel.setPower(power);
-    }
+    // Declare OpMode members for each of the 4 motors.
+    private ElapsedTime runtime = new ElapsedTime();
+    private DcMotor frontLeftDrive = null;
+    private DcMotor backLeftDrive = null;
+    private DcMotor frontRightDrive = null;
+    private DcMotor backRightDrive = null;
 
     @Override
     public void runOpMode() {
-        backLeft = hardwareMap.get(DcMotor.class, "backLeft");
-        backRight = hardwareMap.get(DcMotor.class, "backRight");
-        frontLeft = hardwareMap.get(DcMotor.class, "frontLeft");
-        frontRight = hardwareMap.get(DcMotor.class, "frontRight");
 
-        flywheel = hardwareMap.get(DcMotor.class, "flywheel");
-        funnel = hardwareMap.get(DcMotor.class, "funnel");
-        cycler1 = hardwareMap.get(DcMotor.class, "cycler1");
-        cycler2 = hardwareMap.get(DcMotor.class, "cycler2");
+        // Initialize the hardware variables. Note that the strings used here must correspond
+        // to the names assigned during the robot configuration step on the DS or RC devices.
+        frontLeftDrive = hardwareMap.get(DcMotor.class, "frontLeft");
+        backLeftDrive = hardwareMap.get(DcMotor.class, "backLeft");
+        frontRightDrive = hardwareMap.get(DcMotor.class, "frontRight");
+        backRightDrive = hardwareMap.get(DcMotor.class, "backRight");
 
-        frontLeft.setDirection(DcMotorSimple.Direction.REVERSE);
-        backLeft.setDirection(DcMotorSimple.Direction.REVERSE);
-        flywheel.setDirection(DcMotorSimple.Direction.REVERSE);
-        cycler1.setDirection(DcMotorSimple.Direction.REVERSE);
-        cycler2.setDirection(DcMotorSimple.Direction.REVERSE);
-        
+        // ########################################################################################
+        // !!!            IMPORTANT Drive Information. Test your motor directions.            !!!!!
+        // ########################################################################################
+        // Most robots need the motors on one side to be reversed to drive forward.
+        // The motor reversals shown here are for a "direct drive" robot (the wheels turn the same direction as the motor shaft)
+        // If your robot has additional gear reductions or uses a right-angled drive, it's important to ensure
+        // that your motors are turning in the correct direction.  So, start out with the reversals here, BUT
+        // when you first test your robot, push the left joystick forward and observe the direction the wheels turn.
+        // Reverse the direction (flip FORWARD <-> REVERSE ) of any wheel that runs backward
+        // Keep testing until ALL the wheels move the robot forward when you push the left joystick forward.
+        frontLeftDrive.setDirection(DcMotor.Direction.REVERSE);
+        backLeftDrive.setDirection(DcMotor.Direction.REVERSE);
+        frontRightDrive.setDirection(DcMotor.Direction.FORWARD);
+        backRightDrive.setDirection(DcMotor.Direction.FORWARD);
 
-        frontLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        frontRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        backLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        backRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-
-        imu = hardwareMap.get(IMU.class, "imu");
-        IMU.Parameters params;
-
-        params = new IMU.Parameters(
-             new RevHubOrientationOnRobot(
-                  RevHubOrientationOnRobot.LogoFacingDirection.UP,
-                  RevHubOrientationOnRobot.UsbFacingDirection.FORWARD
-             )
-        );
-        
-        imu.initialize(params);
-        
-        YawPitchRollAngles robotOrientation;
-        double Yaw;
-        double relativeDirection;
-        
+        // Wait for the game to start (driver presses START)
         telemetry.addData("Status", "Initialized");
         telemetry.update();
-        // Wait for the game to start (driver presses PLAY)
+
         waitForStart();
+        runtime.reset();
 
-        funnel.setPower(1);
-
-        double direction;
-        double power;
-
-        boolean lastStart = false;
-
-        telemetry.addData("Status", "Running");
         // run until the end of the match (driver presses STOP)
-        
         while (opModeIsActive()) {
-            robotOrientation = imu.getRobotYawPitchRollAngles();
+            double max;
 
-            double turn = Math.abs(gamepad1.right_stick_x) > 0.05
-                ? gamepad1.right_stick_x * 0.6
-                : 0;
-            
-            double xl1 = -gamepad1.left_stick_x;
-            double yl1 = gamepad1.left_stick_y;
-            
-            if (Math.hypot(xl1, yl1) < 0.05) {
-                driveInDirection(0, 0, turn);
-            } else {
-                direction = Math.atan2(yl1, xl1);
-                Yaw = robotOrientation.getYaw(AngleUnit.RADIANS);
-                relativeDirection = direction - Yaw;
+            // POV Mode uses left joystick to go forward & strafe, and right joystick to rotate.
+            double axial   = -gamepad1.left_stick_y;  // Note: pushing stick forward gives negative value
+            double lateral =  gamepad1.left_stick_x;
+            double yaw     =  gamepad1.right_stick_x;
 
-                if (relativeDirection < -Math.PI) {
-                    relativeDirection += 2*Math.PI;
-                } else if (relativeDirection > Math.PI) {
-                    relativeDirection -= 2*Math.PI;
-                }
-                    
-                if(this.gamepad1.left_trigger > 0.3) {
-                    power = Math.min(1.0, Math.hypot(xl1,yl1) * 1.5); // this is if we need to go fast
-                } else {
-                    power = Math.min(1.0, Math.hypot(xl1,yl1) * 0.5); // this is without the button, so it moves a little slower for precision
-                }
-                
-                telemetry.addData("Joystick Direction", String.valueOf(direction));
-                telemetry.addData("Yaw", String.valueOf(Yaw));
-                telemetry.addData("Relative Direction", String.valueOf(relativeDirection));
-                telemetry.addData("Drive Power", String.valueOf(power));
-                
-                driveInDirection(relativeDirection, power, turn);
+            // Combine the joystick requests for each axis-motion to determine each wheel's power.
+            // Set up a variable for each drive wheel to save the power level for telemetry.
+            double frontLeftPower  = axial + lateral + yaw;
+            double frontRightPower = axial - lateral - yaw;
+            double backLeftPower   = axial - lateral + yaw;
+            double backRightPower  = axial + lateral - yaw;
+
+            // Normalize the values so no wheel power exceeds 100%
+            // This ensures that the robot maintains the desired motion.
+            max = Math.max(Math.abs(frontLeftPower), Math.abs(frontRightPower));
+            max = Math.max(max, Math.abs(backLeftPower));
+            max = Math.max(max, Math.abs(backRightPower));
+
+            if (max > 1.0) {
+                frontLeftPower  /= max;
+                frontRightPower /= max;
+                backLeftPower   /= max;
+                backRightPower  /= max;
             }
 
-            double yl2 = gamepad2.left_stick_y;
-            double yr2 = gamepad2.right_stick_y;
+            // This is test code:
+            //
+            // Uncomment the following code to test your motor directions.
+            // Each button should make the corresponding motor run FORWARD.
+            //   1) First get all the motors to take to correct positions on the robot
+            //      by adjusting your Robot Configuration if necessary.
+            //   2) Then make sure they run in the correct direction by modifying the
+            //      the setDirection() calls above.
+            // Once the correct motors move in the correct direction re-comment this code.
 
-            if (Math.abs(yr2) > 0.05) {
-                cycleBall(yr2);
-            } else {
-                cycleBall(0);
-            }
+            /*
+            frontLeftPower  = gamepad1.x ? 1.0 : 0.0;  // X gamepad
+            backLeftPower   = gamepad1.a ? 1.0 : 0.0;  // A gamepad
+            frontRightPower = gamepad1.y ? 1.0 : 0.0;  // Y gamepad
+            backRightPower  = gamepad1.b ? 1.0 : 0.0;  // B gamepad
+            */
 
-            if (Math.abs(yl2) > 0.05) {
-                spinFlywheel(yl2);
-            } else {
-                spinFlywheel(0);
-            }            
+            // Send calculated power to wheels
+            frontLeftDrive.setPower(frontLeftPower);
+            frontRightDrive.setPower(frontRightPower);
+            backLeftDrive.setPower(backLeftPower);
+            backRightDrive.setPower(backRightPower);
 
-            if (gamepad1.start && !lastStart) {
-                imu.resetYaw();
-            }
-            lastStart = gamepad1.start;
-
+            // Show the elapsed game time and wheel power.
+            telemetry.addData("Status", "Run Time: " + runtime.toString());
+            telemetry.addData("Front left/Right", "%4.2f, %4.2f", frontLeftPower, frontRightPower);
+            telemetry.addData("Back  left/Right", "%4.2f, %4.2f", backLeftPower, backRightPower);
             telemetry.update();
         }
-    }
-}
+    }}
